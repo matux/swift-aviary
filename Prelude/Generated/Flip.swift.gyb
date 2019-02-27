@@ -1,0 +1,98 @@
+// -*- generated file, do not modify directly -*-
+import Swift
+%{
+from support import chradd, join
+
+arity_range = range(2 + 6)
+chars = lambda a: [chradd(a, n) for n in arity_range]
+values, types = (chars('a'), chars('A'))
+body = lambda n: "return {{ {open} in λ({call}) }}".format(
+  open = ', '.join(reversed(values[:n])),
+  call = ', '.join(values[:n]))
+
+body_curried = lambda n: "return {open}\n        λ{call}\n    {close}".format(
+  open = join(map("{{ {} in ".format, reversed(values[:n]))),
+  call = join(map("({})".format, values[:n])),
+  close = join([" }"] * n))
+
+body_static = lambda n: "return {{ {open} in {{ `self` in λ(`self`)({call}) }} }}".format(
+  open = ', '.join(reversed(values[:n])),
+  call = ', '.join(values[:n]))
+}%
+
+// MARK: - Flip
+
+% for n in arity_range[2:]:
+/// Returns an n-ary function that calls the given function passing its
+/// arguments in reverse order.
+///
+/// `flip(λ)` will take its arguments in the reverse order of `λ` as
+/// denoted by `flip(λ)(y, x) ⟹ λ(x, y)`:
+///
+///       4> flip(+)("hello", "world")
+///     $R0: String = "worldhello"
+///
+/// - Parameter λ: An n-ary function.
+/// - Returns: An n-ary function that takes the same arguments as the
+///   given function but in reverse order.
+@inlinable
+internal func flip<${', '.join(types[:n])}, Result>(
+  _ λ: @escaping (${', '.join(types[:n])}) -> Result
+) -> (${', '.join(reversed(types[:n]))}) -> Result {
+    ${body(n)}
+}
+
+% end
+// MARK: - Flipping curries
+
+% for n in arity_range[2:]:
+/// Returns a curried invocation of a similarly curried function `λ`
+/// but that takes its arguments in reverse order.
+///
+/// `flip(λ)` will take the arguments of `λ` in their reverse order as
+/// denoted by `flip(λ)(y, x) ⟹ λ(x, y)`:
+///
+///       4> flip(+)("hello")("world")
+///     $R0: String = "worldhello"
+///
+/// - Parameter λ: An n-ary function.
+/// - Returns: An n-ary function that takes the same arguments as the
+///   given function but in reverse order.
+@inlinable
+internal func flip<${', '.join(types[:n])}, Result>(
+    _ λ: @escaping (${') -> ('.join(types[:n])}) -> Result
+) -> (${') -> ('.join(reversed(types[:n]))}) -> Result {
+    ${body_curried(n)}
+}
+
+% end
+// MARK: - Flipping instance methods
+
+% for n in arity_range[2:]:
+/// Returns an n-ary function that calls the given function passing its
+/// arguments in reverse order.
+///
+/// `flip(λ)` will take the arguments of `λ` in their reverse order as
+/// denoted by `flip(λ)(y, x) ⟹ λ(x, y)`:
+///
+///       4> flip(+)("hello")("world")
+///     $R0: String = "worldhello"
+///
+/// - Remark: This variant addresses an [issue](issue) in Swift when
+///   invoking instance methods statically. This variant should be
+///   [temporary](temp) although the [timeline](time) seems uncertain.
+///
+/// - Parameter λ: An n-ary function.
+/// - Returns: An n-ary function that takes the same arguments as the
+///   given function but in reverse order.
+/// [issue]: https://bugs.swift.org/browse/SR-1051
+/// [temp]: https://github.com/apple/swift-evolution/blob/master/proposals/0042-flatten-method-types.md
+/// [time]: https://github.com/apple/swift/pull/3836
+@inlinable
+internal func flip<Self, ${', '.join(types[:n])}, Result>(
+    _ λ: @escaping (Self) -> (${', '.join(types[:n])}) -> Result
+) -> (${', '.join(reversed(types[:n]))}) -> (Self) -> Result {
+    ${body_static(n)}
+}
+
+% end

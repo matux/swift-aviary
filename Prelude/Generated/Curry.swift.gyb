@@ -1,0 +1,52 @@
+import Swift
+%{
+from support import chradd, join
+
+arity_range = range(2 + 6)
+chars = lambda a: [chradd(a, n) for n in arity_range]
+values, types = (chars('a'), chars('A'))
+body_curry = lambda n: "return {open}\n        λ({call})\n    {close}".format(
+  open = join(map("{{ {} in ".format, values[:n])),
+  call = ', '.join(values[:n]),
+  close = join([" }"] * n))
+
+body_uncurry = lambda n: "return {{ {open} in λ{call} }}".format(
+  open = ', '.join(values[:n]),
+  call = join(map("({})".format, values[:n])))
+}%
+% for n in arity_range[2:]:
+
+// MARK: - curry
+
+/// Decorates a function with multiple parameters with a sequence of
+/// functions, each with a single argument, deferring the call to the
+/// original function until the last argument is provided.
+///
+/// - Parameter λ: An n-ary function of two or more parameters.
+/// - Returns: A sequence of unary functions accepting `λ`'s arguments
+///   one call at a time.
+@inlinable
+internal func curry<${', '.join(types[:n])}, Result>(
+  _ λ: @escaping (${', '.join(types[:n])}) -> Result
+) -> (${') -> ('.join(types[:n])}) -> Result {
+    ${body_curry(n)}
+}
+% end
+
+// MARK: - uncurry
+% for n in arity_range[2:]:
+
+/// Decorates a sequence of unary functions with a function that will
+/// take all of the parameters in a single call.
+///
+/// - Parameter λ: A sequence of unary function (ie. an uncurried
+///   function).
+/// - Returns: A function that takes all the sequential functions'
+///   parameters with a single call.
+@inlinable
+internal func uncurry<${', '.join(types[:n])}, Result>(
+  _ λ: @escaping (${') -> ('.join(types[:n])}) -> Result
+) -> (${', '.join(types[:n])}) -> Result {
+    ${body_uncurry(n)}
+}
+% end

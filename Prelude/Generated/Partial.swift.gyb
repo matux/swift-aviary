@@ -1,0 +1,60 @@
+import Swift
+
+/// # Partial Function Application
+/// _"The power of function calls... But just a part of it."_™
+///
+/// In Category theory, the partial application of a binary function
+/// can be denoted by the isomorphism of its exponential object and its
+/// curried form:
+///
+///     𝑝𝑎𝑝𝑝𝑙𝑦 𝑎 𝑏 𝑐 ∷ 𝐶ᴬˣᴮ × 𝐴 =̃ (𝐶ᴮ)ᴬ × 𝐴 -> 𝐶ᴮ
+///
+/// In the context of Computer Science, however, this represents the
+/// notion of the computer scientist telling you "your dumb."
+///
+/// I know. Bastards.
+///
+/// Now that you understand the concept, let's proceed with the use
+/// cases:
+///
+/// ### SeeAlso:
+///  - [Wikipedia](https://en.wikipedia.org/wiki/Partial_application)
+///  - [Rosetta Code](https://rosettacode.org/wiki/Partial_function_application)
+private enum Partial { }
+
+%{
+from support import *
+max_arity = (2 + 4)
+ignored_param = "_  : (·)"
+char_pairs = [map(caddchr(n), ('a', 'A')) for n in range(max_arity)]
+lowercased, uppercased = zip(*char_pairs)
+params = starmap("_ {}: ({})".format, char_pairs)
+
+trimmed_product = compose( # // let trimmed_product be
+  cimap(                   # // a list
+    compose(               # // of
+      ', '.join,           # // comma separated
+      cfilter(nonempty))), # // non-empty strings
+  istrip,                  # // with the trimmed
+  starproduct)             # // product of a given packed container
+
+format_ = lambda s, x='': trimmed_product(zip(s, [x] * len(s)))
+}%
+% for arity in range(2, max_arity):
+// MARK: - ${arity}-ary
+
+%   types, values = (uppercased[:arity], lowercased[:arity])
+%   remainder_types = reversed(format_(types))
+%   remainder_values = reversed(format_(values))
+%   for partial_params in format_(params[:arity], ignored_param):
+/// Partially apply a function of ${arity} parameters, providing
+/// some, but not all, arguments.
+@inlinable
+internal func partial<${', '.join(types)}, Result>(
+    _ λ: @escaping (${', '.join(types)}) -> Result, ${partial_params}
+) -> (${remainder_types.next()}) -> Result {
+    return { ${remainder_values.next()} in λ(${', '.join(values)}) }
+}
+
+%   end
+% end
